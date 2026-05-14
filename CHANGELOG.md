@@ -7,6 +7,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+- Parent POM now carries a formal `<licenses>` block (MIT) and `<developers>` entry so downstream consumers and Maven Central tooling pick up the license metadata automatically.
+
 ## [0.1.0-SNAPSHOT] — 2026-05-14
 
 Initial public snapshot. Java reimagining of `couchbaselabs/cbfs` — metadata in

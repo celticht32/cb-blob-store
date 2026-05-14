@@ -23,6 +23,20 @@
         and object payload in S3-compatible storage.
     </description>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Chris Ahrendt</name>
+        </developer>
+    </developers>
+
     <modules>
         <module>cb-blob-store-core</module>
         <module>cb-blob-store-rest</module>
