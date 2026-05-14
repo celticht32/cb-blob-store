@@ -1,0 +1,36 @@
+digraph eventing {
+  rankdir=LR;
+  bgcolor="white";
+  fontname="Helvetica";
+  labelloc="t";
+  label="Couchbase Eventing integration";
+  fontsize=14;
+  node [fontname="Helvetica", fontsize=10, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  App [label="BlobStore\nput/delete/updateMetadata", fillcolor="#dfe7f3"];
+
+  subgraph cluster_cb {
+    label="Couchbase cluster";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+
+    Data [label="Data service\n(KV) — blob_metadata", shape=cylinder, fillcolor="#fdf0d5"];
+    Dcp  [label="DCP stream", shape=oval, fillcolor="#fdf0d5"];
+    Fn   [label="Eventing function\n(JavaScript, in-cluster)", fillcolor="#dfffe6"];
+    Meta [label="metadata bucket\n(eventing internal)", shape=cylinder, fillcolor="#fdf0d5"];
+
+    Data -> Dcp [label="mutations"];
+    Dcp  -> Fn  [label="OnUpdate /\nOnDelete"];
+    Fn   -> Meta [style=dashed, label="checkpoints"];
+  }
+
+  Webhook [label="External webhook\n(SIEM, Slack, queue)", shape=note, fillcolor="#e8e3f0"];
+  Other   [label="other Couchbase doc\n(audit log, fan-out)", shape=cylinder, fillcolor="#fdf0d5"];
+
+  App -> Data [label="metadata insert /\nreplace / delete"];
+  Fn  -> Webhook [label="curl()", style=dashed];
+  Fn  -> Data    [label="bucket bindings\n(rewrite, fan-out)", style=dashed];
+}

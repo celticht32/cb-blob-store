@@ -1,0 +1,49 @@
+# .gitignore — git exclusions
+# Part of cb-blob-store. Copyright (c) 2026 Chris Ahrendt. MIT licensed.
+
+# Build outputs
+target/
+*.class
+*.jar
+*.war
+dependency-reduced-pom.xml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.ipr
+*.iws
+out/
+bin/
+.factorypath
+
+# Mac / Linux / Windows noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+hs_err_pid*.log
+
+# Local dev creds (do NOT commit)
+.env
+.env.*
+*.pem
+*.p12
+*.jks
+*.keystore
+
+# Maven wrapper output if added later
+.mvn/wrapper/maven-wrapper.jar
+
+# Coverage reports
+*.exec
+jacoco.exec

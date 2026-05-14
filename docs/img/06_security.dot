@@ -1,0 +1,23 @@
+digraph security {
+  rankdir=LR;
+  bgcolor="white";
+  fontname="Helvetica";
+  labelloc="t";
+  label="Security boundaries";
+  fontsize=14;
+  node [fontname="Helvetica", fontsize=11, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  Client [label="Client", shape=oval, fillcolor="#dfe7f3"];
+  Proxy  [label="Reverse proxy\n(or in-process TLS)"];
+  REST   [label="BlobStoreServer\nauth · rate-limit · audit\nbody-size cap · SSE", fillcolor="#dfffe6"];
+  CB     [label="Couchbase", shape=cylinder, fillcolor="#fdf0d5"];
+  S3     [label="S3", shape=cylinder, fillcolor="#fdf0d5"];
+  SIEM   [label="SIEM /\naudit sink", shape=folder, fillcolor="#e8e3f0"];
+
+  Client -> Proxy [label="TLS + Bearer"];
+  Proxy  -> REST  [label="HTTP\n(localhost)"];
+  REST   -> CB    [label="couchbases://\n(TLS)"];
+  REST   -> S3    [label="TLS + SigV4\n+ SSE"];
+  REST   -> SIEM  [label="audit log", style=dashed, color="#7a6c9a"];
+}

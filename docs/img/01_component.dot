@@ -1,0 +1,55 @@
+digraph component {
+  rankdir=LR;
+  bgcolor="white";
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  subgraph cluster_app {
+    label="Application JVM";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    UC  [label="Your code"];
+    LIB [label="BlobStore\n(cb-blob-store-core)", fillcolor="#dfe7f3"];
+    UC -> LIB [label="put / get / delete"];
+  }
+
+  subgraph cluster_cb {
+    label="Couchbase Server 7.6 / 8.x or Capella";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    BUCKET [label="bucket:\nblob_metadata", shape=cylinder, fillcolor="#fdf0d5"];
+  }
+
+  subgraph cluster_s3 {
+    label="S3-compatible object storage";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    OBJ [label="bucket:\nblob payloads", shape=cylinder, fillcolor="#fdf0d5"];
+  }
+
+  subgraph cluster_side {
+    label="Optional: cb-blob-store-rest";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    JV   [label="Javalin\nHTTP server"];
+    LIB2 [label="BlobStore\n(same library)", fillcolor="#dfe7f3"];
+    JV -> LIB2;
+  }
+
+  CLIENTS [label="curl / non-JVM\nclients", fillcolor="#e8e3f0"];
+
+  LIB  -> BUCKET [label="KV ops\n(Java SDK 3.11)"];
+  LIB  -> OBJ    [label="multipart upload\nstreaming get\n(AWS SDK v2)"];
+  LIB2 -> BUCKET [style=dashed];
+  LIB2 -> OBJ    [style=dashed];
+  CLIENTS -> JV  [style=dashed, label="HTTP"];
+}

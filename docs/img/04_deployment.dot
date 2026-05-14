@@ -1,0 +1,50 @@
+digraph deployment {
+  rankdir=TB;
+  bgcolor="white";
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  subgraph cluster_app {
+    label="Application JVM";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    App [label="Application code"];
+    Lib [label="cb-blob-store-core", fillcolor="#dfe7f3"];
+    App -> Lib;
+  }
+
+  subgraph cluster_optional {
+    label="Optional sidecar";
+    style="filled,rounded,dashed";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    REST [label="cb-blob-store-rest\nshaded jar"];
+  }
+
+  subgraph cluster_cb {
+    label="Couchbase";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    CB1 [label="Server 7.6 / 8.x\nor Capella", shape=cylinder, fillcolor="#fdf0d5"];
+  }
+
+  subgraph cluster_obj {
+    label="Object storage";
+    style="filled,rounded";
+    fillcolor="#fafbfc";
+    color="#bcc4cf";
+    fontsize=12;
+    S3o [label="AWS S3 / MinIO\nR2 / Wasabi / Ceph", shape=cylinder, fillcolor="#fdf0d5"];
+  }
+
+  Lib  -> CB1;
+  Lib  -> S3o;
+  REST -> CB1;
+  REST -> S3o;
+}

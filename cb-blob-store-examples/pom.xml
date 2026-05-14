@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pom.xml — Runnable example programs
+
+  Part of cb-blob-store.
+  Copyright (c) 2026 Chris Ahrendt
+  Licensed under the MIT License — see LICENSE for details.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.cbblobstore</groupId>
+        <artifactId>cb-blob-store-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>cb-blob-store-examples</artifactId>
+    <name>cb-blob-store :: examples</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.cbblobstore</groupId>
+            <artifactId>cb-blob-store-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+    </dependencies>
+</project>

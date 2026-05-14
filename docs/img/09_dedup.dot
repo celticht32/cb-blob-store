@@ -1,0 +1,31 @@
+digraph dedup {
+  rankdir=TB;
+  bgcolor="white";
+  fontname="Helvetica";
+  labelloc="t";
+  label="Content-addressed dedup (design only)";
+  fontsize=14;
+  node [fontname="Helvetica", fontsize=10, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  S1 [label="① Application calls\nput(InputStream, options)", fillcolor="#dfe7f3"];
+  S2 [label="② Compute SHA-256 over the\nstream (buffer to disk if needed,\nor stage to a temp S3 key)"];
+  S3 [label="③ KV-get sha-lookup doc\nid = \"sha256:\" + hex", shape=oval];
+  S4Hit  [label="④a HIT — append blobId\nto refs[]; reuse existing\ns3Bucket/s3Key", fillcolor="#dfffe6"];
+  S4Miss [label="④b MISS — upload to S3\n(commit), then create\nsha-lookup doc with\nrefs=[blobId]", fillcolor="#fdf0d5"];
+  S5 [label="⑤ Insert BlobMetadata\npointing at the resolved\ns3Key", fillcolor="#dfe7f3"];
+
+  Lookup [label="sha-lookup document\n{ type:\"sha-lookup\",\n  sha256, s3Bucket, s3Key,\n  refs:[blobId, blobId, …] }",
+          shape=note, fillcolor="#e8e3f0"];
+
+  S1 -> S2 -> S3;
+  S3 -> S4Hit [label="found"];
+  S3 -> S4Miss [label="missing"];
+  S4Hit  -> S5;
+  S4Miss -> S5;
+  S4Hit  -> Lookup [style=dashed, dir=both];
+  S4Miss -> Lookup [style=dashed, dir=both];
+
+  Del [label="delete(blobId)\n→ remove from refs[];\nif empty, delete sha-doc\nAND S3 object", fillcolor="#fcd5d5"];
+  Lookup -> Del [style=dotted, label="on delete"];
+}

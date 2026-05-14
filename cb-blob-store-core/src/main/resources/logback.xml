@@ -1,0 +1,22 @@
+<!--
+  logback.xml — Default logging configuration for the core library
+
+  Part of cb-blob-store.
+  Copyright (c) 2026 Chris Ahrendt
+  Licensed under the MIT License — see LICENSE for details.
+-->
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="io.cbblobstore" level="INFO"/>
+    <logger name="com.couchbase" level="WARN"/>
+    <logger name="software.amazon.awssdk" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

@@ -1,0 +1,23 @@
+digraph upload_seq {
+  rankdir=TB;
+  bgcolor="white";
+  fontname="Helvetica";
+  labelloc="t";
+  label="Upload sequence (BlobStore.put)";
+  fontsize=14;
+  node [fontname="Helvetica", fontsize=10, style="filled,rounded", shape=box, color="#3b4d61", fillcolor="#eaeef2"];
+  edge [fontname="Helvetica", fontsize=9, color="#3b4d61"];
+
+  s1 [label="① Application calls\nput(InputStream, options)", fillcolor="#dfe7f3"];
+  s2 [label="② BlobStore →\nCreateMultipartUpload(bucket, key)\nS3 returns uploadId"];
+  s3 [label="③ Read 8 MiB,\nupdate SHA-256,\nUploadPart(N) → ETag\n(loop until EOF)", fillcolor="#fdf0d5"];
+  s4 [label="④ CompleteMultipartUpload(parts)\n— S3 commits the object"];
+  s5 [label="⑤ insert(blobId, metadata JSON)\ninto Couchbase", fillcolor="#dfe7f3"];
+  s6 [label="⑥ Return BlobMetadata to caller", fillcolor="#dfffe6"];
+  err [label="✗ Any failure →\nAbortMultipartUpload(uploadId)\nthrow; no Couchbase write", fillcolor="#fde2e2"];
+
+  s1 -> s2 -> s3 -> s4 -> s5 -> s6;
+  s2 -> err [style=dashed, color="#b94a48", label="error"];
+  s3 -> err [style=dashed, color="#b94a48", label="error"];
+  s4 -> err [style=dashed, color="#b94a48", label="error"];
+}
