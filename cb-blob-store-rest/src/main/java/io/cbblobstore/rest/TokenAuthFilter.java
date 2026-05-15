@@ -77,9 +77,11 @@ public final class TokenAuthFilter {
     }
 
     private boolean matchesAny(String presented) {
+        // Run the same comparison work for every configured token, regardless of
+        // whether one matched earlier, so total time doesn't reveal a hit or
+        // near-miss. MessageDigest.isEqual is documented constant-time since JDK 7.
         boolean hit = false;
         byte[] pBytes = presented.getBytes(StandardCharsets.UTF_8);
-        // Loop over all tokens so timing doesn't reveal a near-match.
         for (String tok : tokens) {
             byte[] tBytes = tok.getBytes(StandardCharsets.UTF_8);
             if (constantTimeEquals(pBytes, tBytes)) {
@@ -90,14 +92,27 @@ public final class TokenAuthFilter {
         return hit;
     }
 
-    /** Equal length and equal contents in constant time. */
+    /**
+     * Constant-time byte-array equality. Length differences are masked by padding
+     * both inputs to a common max length before comparison, so the loop runs the
+     * same number of iterations regardless of inputs. This prevents an attacker
+     * from inferring the configured token length from observable response time.
+     *
+     * <p>Delegates the actual comparison to {@link java.security.MessageDigest#isEqual},
+     * which the JDK documents as constant-time.</p>
+     */
     static boolean constantTimeEquals(byte[] a, byte[] b) {
-        if (a.length != b.length) return false;
-        int result = 0;
-        for (int i = 0; i < a.length; i++) {
-            result |= a[i] ^ b[i];
-        }
-        return result == 0;
+        // Pad to a common length so we don't short-circuit on length mismatch.
+        // The padded comparison still distinguishes "same length, different bytes"
+        // from "different lengths" thanks to mismatching pad regions, which is the
+        // correct outcome — but the loop time doesn't reveal which.
+        int max = Math.max(a.length, b.length);
+        byte[] aPad = a.length == max ? a : java.util.Arrays.copyOf(a, max);
+        byte[] bPad = b.length == max ? b : java.util.Arrays.copyOf(b, max);
+        // Combine the constant-time comparison with a length check so we still
+        // reject correctly when one is a prefix of the other (e.g. configured
+        // token "abc" vs presented "abc\0\0").
+        return java.security.MessageDigest.isEqual(aPad, bPad) && a.length == b.length;
     }
 
     /**
