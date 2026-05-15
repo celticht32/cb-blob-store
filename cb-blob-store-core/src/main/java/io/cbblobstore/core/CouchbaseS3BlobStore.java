@@ -294,30 +294,41 @@ final class CouchbaseS3BlobStore implements BlobStore {
     public InputStream get(String blobId) {
         IdValidator.requireValid(blobId);
         long startNanos = System.nanoTime();
+        Outcome outcome = Outcome.FAILURE;
         try (var mdc = MDC.putCloseable("blobId", blobId)) {
             log.debug("get start");
-            BlobMetadata meta = metadata.findById(blobId)
-                    .orElseThrow(() -> {
-                        metrics.recordGetNotFound(elapsedSince(startNanos));
-                        log.debug("get not found");
-                        return new BlobStoreException.NotFound(blobId);
-                    });
+            Optional<BlobMetadata> metaOpt;
+            try {
+                metaOpt = metadata.findById(blobId);
+            } catch (RuntimeException e) {
+                log.warn("get failed — metadata lookup error", e);
+                throw e;
+            }
+            if (metaOpt.isEmpty()) {
+                outcome = Outcome.NOT_FOUND;
+                log.debug("get not found");
+                throw new BlobStoreException.NotFound(blobId);
+            }
+            BlobMetadata meta = metaOpt.get();
             try {
                 InputStream stream = s3.getObject(GetObjectRequest.builder()
                         .bucket(meta.s3Bucket()).key(meta.s3Key()).build());
-                metrics.recordGetSuccess(elapsedSince(startNanos));
+                outcome = Outcome.SUCCESS;
                 log.info("get streaming bucket={} key={} size={}", meta.s3Bucket(), meta.s3Key(), meta.size());
                 return stream;
             } catch (NoSuchKeyException e) {
-                metrics.recordGetFailure(elapsedSince(startNanos));
                 log.warn("get failed — S3 object missing for blob id={} bucket={} key={}",
                         blobId, meta.s3Bucket(), meta.s3Key());
                 throw new BlobStoreException(
                         "S3 object missing for blob " + blobId
                                 + " (metadata points to " + meta.s3Bucket() + "/" + meta.s3Key() + ")", e);
-            } catch (RuntimeException e) {
-                metrics.recordGetFailure(elapsedSince(startNanos));
-                throw e;
+            }
+        } finally {
+            Duration elapsed = elapsedSince(startNanos);
+            switch (outcome) {
+                case SUCCESS:   metrics.recordGetSuccess(elapsed); break;
+                case NOT_FOUND: metrics.recordGetNotFound(elapsed); break;
+                case FAILURE:   metrics.recordGetFailure(elapsed); break;
             }
         }
     }
@@ -333,11 +344,18 @@ final class CouchbaseS3BlobStore implements BlobStore {
     @Override
     public void delete(String blobId) {
         IdValidator.requireValid(blobId);
+        Outcome outcome = Outcome.FAILURE;
         try (var mdc = MDC.putCloseable("blobId", blobId)) {
             log.debug("delete start");
-            Optional<BlobMetadata> opt = metadata.findById(blobId);
+            Optional<BlobMetadata> opt;
+            try {
+                opt = metadata.findById(blobId);
+            } catch (RuntimeException e) {
+                log.warn("delete failed — metadata lookup error", e);
+                throw e;
+            }
             if (opt.isEmpty()) {
-                metrics.recordDeleteNotFound();
+                outcome = Outcome.NOT_FOUND;
                 log.debug("delete miss — no metadata");
                 return;
             }
@@ -346,12 +364,17 @@ final class CouchbaseS3BlobStore implements BlobStore {
                 s3.deleteObject(DeleteObjectRequest.builder()
                         .bucket(meta.s3Bucket()).key(meta.s3Key()).build());
                 metadata.delete(blobId);
-                metrics.recordDeleteSuccess();
+                outcome = Outcome.SUCCESS;
                 log.info("deleted blob id={} bucket={} key={}", blobId, meta.s3Bucket(), meta.s3Key());
             } catch (RuntimeException e) {
-                metrics.recordDeleteFailure();
                 log.warn("delete failed id={}", blobId, e);
                 throw e;
+            }
+        } finally {
+            switch (outcome) {
+                case SUCCESS:   metrics.recordDeleteSuccess(); break;
+                case NOT_FOUND: metrics.recordDeleteNotFound(); break;
+                case FAILURE:   metrics.recordDeleteFailure(); break;
             }
         }
     }
@@ -359,16 +382,24 @@ final class CouchbaseS3BlobStore implements BlobStore {
     @Override
     public BlobMetadata updateMetadata(String blobId, BlobOptions options) {
         IdValidator.requireValid(blobId);
+        Outcome outcome = Outcome.FAILURE;
         try (var mdc = MDC.putCloseable("blobId", blobId)) {
             log.debug("updateMetadata start owner={} project={} retentionUntil={} tags={} attributes={}",
                     options.owner(), options.project(), options.retentionUntil(),
                     options.tags().size(), options.attributes().size());
 
-            BlobMetadata current = metadata.findById(blobId)
-                    .orElseThrow(() -> {
-                        metrics.recordUpdateNotFound();
-                        return new BlobStoreException.NotFound(blobId);
-                    });
+            Optional<BlobMetadata> currentOpt;
+            try {
+                currentOpt = metadata.findById(blobId);
+            } catch (RuntimeException e) {
+                log.warn("updateMetadata failed — metadata lookup error", e);
+                throw e;
+            }
+            if (currentOpt.isEmpty()) {
+                outcome = Outcome.NOT_FOUND;
+                throw new BlobStoreException.NotFound(blobId);
+            }
+            BlobMetadata current = currentOpt.get();
 
             // Compose tags: any non-empty tags map in options REPLACES the existing map,
             // matching the semantics of the typed setters (which also replace).
@@ -382,18 +413,24 @@ final class CouchbaseS3BlobStore implements BlobStore {
                     Instant.now());
             try {
                 metadata.replace(updated);
-                metrics.recordUpdateSuccess();
+                outcome = Outcome.SUCCESS;
                 log.info("metadata updated id={}", blobId);
                 return updated;
             } catch (BlobStoreException.NotFound nf) {
-                metrics.recordUpdateNotFound();
+                outcome = Outcome.NOT_FOUND;
                 throw nf;
-            } catch (RuntimeException e) {
-                metrics.recordUpdateFailure();
-                throw e;
+            }
+        } finally {
+            switch (outcome) {
+                case SUCCESS:   metrics.recordUpdateSuccess(); break;
+                case NOT_FOUND: metrics.recordUpdateNotFound(); break;
+                case FAILURE:   metrics.recordUpdateFailure(); break;
             }
         }
     }
+
+    /** Outcome of a CouchbaseS3BlobStore operation; controls which metric is recorded. */
+    private enum Outcome { SUCCESS, NOT_FOUND, FAILURE }
 
     @Override
     public BlobAnalytics analytics() {
@@ -422,6 +459,7 @@ final class CouchbaseS3BlobStore implements BlobStore {
             case NONE: break;
             case AES256: req.serverSideEncryption(ServerSideEncryption.AES256); break;
             case KMS:    req.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(s3KmsKeyId); break;
+            default: throw new IllegalStateException("unhandled SseMode: " + sseMode);
         }
     }
 
@@ -430,6 +468,7 @@ final class CouchbaseS3BlobStore implements BlobStore {
             case NONE: break;
             case AES256: req.serverSideEncryption(ServerSideEncryption.AES256); break;
             case KMS:    req.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(s3KmsKeyId); break;
+            default: throw new IllegalStateException("unhandled SseMode: " + sseMode);
         }
     }
 
