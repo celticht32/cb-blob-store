@@ -77,12 +77,17 @@ public final class MetadataRepository {
             byte[] bytes = collection.get(id,
                     GetOptions.getOptions().transcoder(RawJsonTranscoder.INSTANCE))
                     .contentAs(byte[].class);
-            BlobMetadata meta = MAPPER.readValue(bytes, BlobMetadata.class);
-            // Guard against id-namespace collisions with non-blob documents.
-            if (!BlobMetadata.DOCUMENT_TYPE.equals(meta.type())) {
+            // Guard against id-namespace collisions with non-blob documents. We
+            // read the type from the raw JSON tree (not BlobMetadata.type(), which
+            // is a constant) so a foreign document with a different type still
+            // surfaces as a miss.
+            com.fasterxml.jackson.databind.JsonNode root = MAPPER.readTree(bytes);
+            com.fasterxml.jackson.databind.JsonNode typeNode = root.get("type");
+            if (typeNode == null || !BlobMetadata.DOCUMENT_TYPE.equals(typeNode.asText())) {
                 log.debug("metadata findById hit but wrong type id={}", id);
                 return Optional.empty();
             }
+            BlobMetadata meta = MAPPER.treeToValue(root, BlobMetadata.class);
             log.trace("metadata findById hit id={}", id);
             return Optional.of(meta);
         } catch (DocumentNotFoundException e) {
