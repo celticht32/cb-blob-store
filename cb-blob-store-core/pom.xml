@@ -48,15 +48,18 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <!--
-            Micrometer is OPTIONAL on the library: the code references MeterRegistry
-            APIs reflectively-safe (only when a registry is wired in via the builder).
-            Users that want metrics must add micrometer-core themselves; users that
-            don't, won't pull it in transitively.
+            Micrometer is a real (non-optional) dependency on the library. The
+            BlobStoreMetrics helper imports MeterRegistry / Counter / Timer /
+            DistributionSummary directly, so excluding micrometer-core transitively
+            causes NoClassDefFoundError on EVERY code path (the JVM resolves
+            imports when the enclosing class loads, regardless of whether
+            metrics are wired up). When no MeterRegistry is supplied, the helper
+            falls back to no-op behavior — but the classes still have to be on
+            the classpath.
         -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- test -->
