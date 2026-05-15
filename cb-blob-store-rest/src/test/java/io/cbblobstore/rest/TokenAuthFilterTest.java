@@ -127,7 +127,6 @@ class TokenAuthFilterTest {
     @Test
     void disabledModePassesEverything() {
         TokenAuthFilter open = new TokenAuthFilter(Set.of(), true);
-        when(ctx.path()).thenReturn("/blobs");
 
         open.handle(ctx);
 
@@ -135,6 +134,8 @@ class TokenAuthFilterTest {
         verify(ctx, never()).skipRemainingHandlers();
         // never even consults the Authorization header
         verify(ctx, times(0)).header("Authorization");
+        // never even consults the path
+        verify(ctx, times(0)).path();
     }
 
     @Test
