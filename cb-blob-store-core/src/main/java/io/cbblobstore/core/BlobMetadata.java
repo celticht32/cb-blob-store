@@ -21,6 +21,7 @@
 package io.cbblobstore.core;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -49,6 +50,7 @@ import java.util.Objects;
  * </ul>
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class BlobMetadata {
 
     /** Constant {@code type} field used to discriminate blob docs in Couchbase. */
@@ -131,20 +133,20 @@ public final class BlobMetadata {
         return DOCUMENT_TYPE;
     }
 
-    public String id() { return id; }
-    public String name() { return name; }
-    public String contentType() { return contentType; }
-    public long size() { return size; }
-    public String sha256() { return sha256; }
-    public String s3Bucket() { return s3Bucket; }
-    public String s3Key() { return s3Key; }
-    public Instant createdAt() { return createdAt; }
-    public Instant updatedAt() { return updatedAt; }
-    public Map<String, String> tags() { return tags; }
-    public String owner() { return owner; }
-    public String project() { return project; }
-    public Instant retentionUntil() { return retentionUntil; }
-    public Map<String, Object> attributes() { return attributes; }
+    @JsonProperty("id")             public String id() { return id; }
+    @JsonProperty("name")           public String name() { return name; }
+    @JsonProperty("contentType")    public String contentType() { return contentType; }
+    @JsonProperty("size")           public long size() { return size; }
+    @JsonProperty("sha256")         public String sha256() { return sha256; }
+    @JsonProperty("s3Bucket")       public String s3Bucket() { return s3Bucket; }
+    @JsonProperty("s3Key")          public String s3Key() { return s3Key; }
+    @JsonProperty("createdAt")      public Instant createdAt() { return createdAt; }
+    @JsonProperty("updatedAt")      public Instant updatedAt() { return updatedAt; }
+    @JsonProperty("tags")           public Map<String, String> tags() { return tags; }
+    @JsonProperty("owner")          public String owner() { return owner; }
+    @JsonProperty("project")        public String project() { return project; }
+    @JsonProperty("retentionUntil") public Instant retentionUntil() { return retentionUntil; }
+    @JsonProperty("attributes")     public Map<String, Object> attributes() { return attributes; }
 
     /**
      * Return a copy with the supplied custom-metadata mutations applied. Useful
