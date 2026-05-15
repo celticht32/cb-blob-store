@@ -314,8 +314,8 @@ public final class BlobStoreServer {
         app.exception(IllegalArgumentException.class, (e, ctx) ->
                 ctx.status(HttpStatus.BAD_REQUEST).result(e.getMessage()));
         app.exception(BlobStoreException.class, (e, ctx) -> {
-            log.warn("backend error", e);
-            ctx.status(HttpStatus.BAD_GATEWAY).result(e.getMessage());
+            log.warn("backend error path={} method={}", ctx.path(), ctx.method(), e);
+            ctx.status(HttpStatus.BAD_GATEWAY).result("upstream backend error");
         });
         app.exception(Exception.class, (e, ctx) -> {
             log.error("unhandled error", e);
@@ -394,7 +394,8 @@ public final class BlobStoreServer {
         String attrJson = ctx.header("X-Blob-Attributes");
         if (attrJson != null && !attrJson.isBlank()) {
             try {
-                java.util.Map<String, Object> m = JSON.readValue(attrJson, java.util.Map.class);
+                java.util.Map<String, Object> m = JSON.readValue(attrJson,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
                 opts.attributes(m);
             } catch (Exception e) {
                 throw new IllegalArgumentException(
