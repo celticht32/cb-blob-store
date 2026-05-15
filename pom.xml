@@ -175,6 +175,15 @@
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.2</version>
+                    <configuration>
+                        <!--
+                            Load Mockito as a Java agent at JVM start so Mockito doesn't
+                            self-attach a byte-buddy agent dynamically. Dynamic agent loading
+                            prints a warning on JDK 21+ and will be disallowed in a future JDK.
+                            See https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html#0.3
+                        -->
+                        <argLine>-javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <artifactId>maven-shade-plugin</artifactId>
