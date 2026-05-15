@@ -15,6 +15,7 @@ import io.cbblobstore.core.BlobStore;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * Minimal end-to-end demonstration of the "easy add + retrieve" API.
@@ -64,7 +65,7 @@ public final class QuickStart {
             // ---- RETRIEVE ----
             try (InputStream in = store.get(meta.id())) {
                 Path out = Path.of(file.getFileName().toString() + ".roundtrip");
-                long copied = Files.copy(in, out);
+                long copied = Files.copy(in, out, StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("downloaded " + copied + " bytes to " + out);
             }
 
