@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+- **BlobMetadata JSON round-trip.** The accessor methods (`id()`, `name()`, `size()`, etc.) don't match Java bean naming, so Jackson silently failed to discover them as serializable properties — only the explicitly-annotated `type()` method was being serialized, producing `{"type":"blob"}` documents with no other fields. Annotated every accessor with `@JsonProperty` to make them visible to Jackson in both directions. Added `@JsonIgnoreProperties(ignoreUnknown = true)` to the class so the synthetic `type` field on the wire is tolerated on read (it's a getter-only discriminator without a creator parameter). Caught by the CI test run on the initial GitHub push.
+- **`MetadataRepository.findById` type guard.** The guard previously compared `meta.type()` (a hard-coded constant) against `DOCUMENT_TYPE`, which always succeeded and would have wrongly accepted documents with `type:"user"` etc. Now reads the `type` field from the raw JSON tree before deserializing, then only constructs the BlobMetadata if it actually is a blob document.
+
 ### Added
 - Parent POM now carries a formal `<licenses>` block (MIT) and `<developers>` entry so downstream consumers and Maven Central tooling pick up the license metadata automatically.
 
