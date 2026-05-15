@@ -151,11 +151,28 @@ public final class BlobStoreBuilder {
      * created out-of-band — see the runbook §9. Pass a back-tick-quoted, dotted
      * reference (e.g. {@code "`blob_metadata`.scope1.collection1"}) if the
      * dataset lives outside the default dataverse.
+     *
+     * <p>The value is interpolated into SQL++ statements as-is — it can't be
+     * parameterized — so this setter enforces an allow-list of safe identifier
+     * characters: ASCII letters, digits, underscore, dot, dash, and back-tick
+     * (for quoted refs). Anything else is rejected.</p>
+     *
+     * @throws IllegalArgumentException if {@code dataset} contains characters
+     *     outside the allow-list
      */
     public BlobStoreBuilder analyticsDataset(String dataset) {
-        this.analyticsDataset = Objects.requireNonNull(dataset, "dataset");
+        Objects.requireNonNull(dataset, "dataset");
+        if (!SAFE_DATASET.matcher(dataset).matches()) {
+            throw new IllegalArgumentException(
+                    "analyticsDataset must match [A-Za-z0-9_.`-]+; got: " + dataset);
+        }
+        this.analyticsDataset = dataset;
         return this;
     }
+
+    /** Allowed characters in an Analytics dataset name (including back-ticks for quoted refs). */
+    private static final java.util.regex.Pattern SAFE_DATASET =
+            java.util.regex.Pattern.compile("[A-Za-z0-9_.`\\-]+");
 
     /**
      * Wire a Micrometer registry. When set, the BlobStore publishes:
@@ -192,7 +209,8 @@ public final class BlobStoreBuilder {
         }
 
         log.info("connecting to Couchbase cs={} bucket={} scope={} collection={} capella={}",
-                couchbaseConnectionString, couchbaseBucket, couchbaseScope, couchbaseCollection, capella);
+                sanitizeConnectionString(couchbaseConnectionString),
+                couchbaseBucket, couchbaseScope, couchbaseCollection, capella);
 
         ClusterEnvironment env = null;
         Cluster cluster = null;
@@ -248,5 +266,38 @@ public final class BlobStoreBuilder {
         s3Builder.credentialsProvider(creds);
 
         return s3Builder.build();
+    }
+
+    /**
+     * Remove any {@code user:pass@} userinfo component from a Couchbase connection
+     * string so it's safe to log. The Couchbase URI form
+     * ({@code couchbases://user:pass@host}) embeds the password, which would
+     * otherwise leak to INFO-level logs.
+     *
+     * <p>Defensive about parse failures: if the input isn't a recognizable URI
+     * shape, returns {@code "***"} rather than the original value.</p>
+     */
+    static String sanitizeConnectionString(String cs) {
+        if (cs == null) return null;
+        // Match scheme://[userinfo@]rest and drop userinfo.
+        int schemeEnd = cs.indexOf("://");
+        if (schemeEnd < 0) {
+            // No scheme — assume a raw host:port list or similar; safe to log as-is.
+            return cs;
+        }
+        int afterScheme = schemeEnd + 3;
+        // Find the host start (first '/' or '?' after scheme, or end of string).
+        int hostEnd = cs.length();
+        for (int i = afterScheme; i < cs.length(); i++) {
+            char c = cs.charAt(i);
+            if (c == '/' || c == '?') { hostEnd = i; break; }
+        }
+        // Look for '@' in [afterScheme, hostEnd) — last '@' wins per RFC 3986 §3.2.1.
+        int at = cs.lastIndexOf('@', hostEnd - 1);
+        if (at < 0 || at < afterScheme) {
+            // No userinfo present.
+            return cs;
+        }
+        return cs.substring(0, afterScheme) + "***@" + cs.substring(at + 1);
     }
 }
